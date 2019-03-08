@@ -1,5 +1,7 @@
 import numpy as np
+import math
 import rebound
+import matplotlib.pyplot as plt
 
 G = 6.67408e-11
 
@@ -16,6 +18,7 @@ class Body:
         self.pos = pos
         self.v = v
 
+
 class Star:
     mass = 0.0
     radius = 0.0
@@ -23,6 +26,7 @@ class Star:
     def __init__(self, mass, radius):
         self.mass = mass
         self.radius = radius
+
 
 class Planet:
     mass = 0.0
@@ -35,7 +39,7 @@ class Planet:
         self.radius = radius
 
 
-def run_simulation(star, planets, total_transits, step_time=3600):
+def run_simulation(star, planets, total_transits, step_time=3600, plot_interval=25, show_plot=False):
     system = rebound.Simulation()
     system.integrator = "whfast"
     system.units = ('s', 'm', 'kg')
@@ -43,24 +47,25 @@ def run_simulation(star, planets, total_transits, step_time=3600):
     for i in range(len(planets)):
         system.add(m=planets[i].mass, a=planets[i].a)
     system.move_to_com()
-    system.dt = 1000
+    system.dt = 100
     system.status()
-
-    pos_data = np.zeros((system.N,3), dtype="float64")
 
     num_transits = 0
     transits = []
-    step = 0
+    flux = []
 
     planet = planets[0]
     in_transit = is_transiting(system.particles, star.radius, planet.radius)
 
+    step = 0
     while num_transits < total_transits:
         step += 1
         system.integrate(step*step_time)
-        system.serialize_particle_data(xyz=pos_data)
-        rad = np.linalg.norm(pos_data[1,:]-pos_data[0,:])
+
         if is_transiting(system.particles, star.radius, planet.radius):
+            if step >= plot_interval: # make sure plot starts out not transiting
+                f = calculate_flux(system.particles, star.radius, planet.radius)
+                flux.append([step, f])
             if not in_transit:
                 in_transit = True
 
@@ -77,6 +82,12 @@ def run_simulation(star, planets, total_transits, step_time=3600):
         else:
             in_transit = False
 
+        if step % plot_interval == 0 and not in_transit:
+            flux.append([step, 1.0])
+
+    if show_plot:
+        flux_arr = np.array(flux)
+        plot_flux(flux_arr, transits, step_time)
     return transits
 
 
@@ -90,9 +101,52 @@ def is_transiting(particles, r_star, r_planet):
     return distyz2 < r2
 
 
+def calculate_flux(particles, r_star, r_planet):
+    dist = ((particles[0].y - particles[1].y) ** 2 + (particles[0].z - particles[1].z) ** 2) ** 0.5
+    if dist < r_star - r_planet:
+        area = math.pi * r_planet**2
+    else:
+        area = calculate_overlap(dist, r_star, r_planet)
+    frac = area/(math.pi * r_star**2)
+    return 1.0 - frac
+
+
+def calculate_overlap(d, r1, r2):
+    cos_alpha = (r1**2 + d**2 - r2**2)/(2.0*r1*d)
+    cos_beta = (r2**2 + d**2 - r1**2)/(2.0*r2*d)
+
+    alpha = math.acos(cos_alpha)
+    beta = math.acos(cos_beta)
+
+    area = alpha * r1**2 + beta * r2**2 - 0.5*(r1**2)*math.sin(2*alpha) - 0.5*(r2**2)*math.sin(2*beta)
+
+    return area
+
+
+def plot_flux(flux, transits, step_size):
+    avg_transit = int((transits[-1]/len(transits))/step_size)
+    plot_data = np.empty_like(flux)
+    plot_data[:,0] = (flux[:,0] - .5*avg_transit) % avg_transit
+    plot_data[:,1] = flux[:,1] - .0003*np.floor((flux[:,0]-0.5*avg_transit)/avg_transit)
+    near_transit = abs(plot_data[:,0] - .5*avg_transit) < 500
+    plt.figure()
+    plt.suptitle("flux")
+    plt.axes(ylim=(.998, 1.0))
+    plt.scatter(plot_data[near_transit,0], plot_data[near_transit,1],2)
+    plt.show(block=False)
+
+def plot_transit_variations(variations):
+    plt.figure()
+    plt.suptitle("transit period changes")
+    plt.plot(variations, "b.")
+    plt.show(block=False)
+
+
 sun = Star(1.9885e30, 6.957e8)
-earth = Planet(5.97237e24, 1.49959e11)
+earth = Planet(5.97237e24, 1.49959e11, 6.3781e6)
 jup = Planet(1.89e27,1e20)
-t = run_simulation(sun, [earth,jup], 10)
+t = run_simulation(sun, [earth, jup], 100, show_plot=False)
 periods = [t[i+1]-t[i] for i in range(len(t)-1)]
+difs = [periods[i+1] - periods[i] for i in range(len(periods)-1)]
+plot_transit_variations(difs)
 print(periods)
