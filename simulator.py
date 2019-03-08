@@ -1,9 +1,8 @@
 import numpy as np
 import math
 import rebound
-import matplotlib.pyplot as plt
 
-G = 6.67408e-11
+from plotting import plot_flux, plot_transit_variations
 
 
 class Body:
@@ -123,29 +122,10 @@ def calculate_overlap(d, r1, r2):
     return area
 
 
-def plot_flux(flux, transits, step_size):
-    avg_transit = int((transits[-1]/len(transits))/step_size)
-    plot_data = np.empty_like(flux)
-    plot_data[:,0] = (flux[:,0] - .5*avg_transit) % avg_transit
-    plot_data[:,1] = flux[:,1] - .0003*np.floor((flux[:,0]-0.5*avg_transit)/avg_transit)
-    near_transit = abs(plot_data[:,0] - .5*avg_transit) < 500
-    plt.figure()
-    plt.suptitle("flux")
-    plt.axes(ylim=(.998, 1.0))
-    plt.scatter(plot_data[near_transit,0], plot_data[near_transit,1],2)
-    plt.show(block=False)
-
-def plot_transit_variations(variations):
-    plt.figure()
-    plt.suptitle("transit period changes")
-    plt.plot(variations, "b.")
-    plt.show(block=False)
-
-
 sun = Star(1.9885e30, 6.957e8)
 earth = Planet(5.97237e24, 1.49959e11, 6.3781e6)
 jup = Planet(1.89e27,1e20)
-t = run_simulation(sun, [earth, jup], 100, show_plot=False)
+t = run_simulation(sun, [earth, jup], 10, show_plot=True)
 periods = [t[i+1]-t[i] for i in range(len(t)-1)]
 difs = [periods[i+1] - periods[i] for i in range(len(periods)-1)]
 plot_transit_variations(difs)
