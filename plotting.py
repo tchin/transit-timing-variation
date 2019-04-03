@@ -28,9 +28,10 @@ def plot_flux(flux, transits, step_size):
 
     plt.figure()
     plt.title("flux")
+    plt.ylabel("relative flux (shifted for ease of viewing)")
+    plt.xticks()
     for transit_data in near_transit_data:
         plt.plot(transit_data[:,0], transit_data[:,1],"b-")
-    # plt.scatter(plot_data[near_transit,0], plot_data[near_transit,1],2)
     plt.show(block=False)
 
 
