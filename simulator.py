@@ -5,19 +5,6 @@ import rebound
 from plotting import plot_flux, plot_transit_variations
 
 
-class Body:
-    mass = None
-    radius = 0.0
-    pos = np.array([0,0,0])
-    v = np.array([0,0,0])
-
-    def __init__(self, mass, pos, v, radius=0.0):
-        self.mass = mass
-        self.radius = radius
-        self.pos = pos
-        self.v = v
-
-
 class Star:
     mass = 0.0
     radius = 0.0
@@ -68,6 +55,8 @@ def run_simulation(star, planets, total_transits, step_time=3600, plot_interval=
             if not in_transit:
                 in_transit = True
 
+                # planet was not transiting last time but is now
+                # so we do binary search to find the exact start of the transit
                 t_0 = (step-1)*step_time
                 t_1 = step*step_time
                 while t_1-t_0 > 1:
@@ -123,10 +112,43 @@ def calculate_overlap(d, r1, r2):
 
 
 sun = Star(1.9885e30, 6.957e8)
-earth = Planet(5.97237e24, 1.49959e11, 6.3781e6)
-jup = Planet(1.89e27,1e20)
-t = run_simulation(sun, [earth, jup], 10, show_plot=True)
-periods = [t[i+1]-t[i] for i in range(len(t)-1)]
-difs = [periods[i+1] - periods[i] for i in range(len(periods)-1)]
-plot_transit_variations(difs)
-print(periods)
+earth = Planet(5.97237e24, 149.598e9, 6.3781e6)
+
+mercury = Planet(3.3e23, 57.9e9)
+venus = Planet(4.87e24, 108.2e9)
+mars = Planet(6.42e23, 227.9e9)
+jup = Planet(1.89e27,740.52e9)
+saturn = Planet(1.9e27, 1427e9)
+uranus = Planet(8.68e25, 2871e9)
+neptune = Planet(1.29e22, 5913e9)
+
+# number of transits to simulate
+num_transit_str = input("number of transits: ")
+while not num_transit_str.isnumeric():
+    num_transit_str = input("number of transits: ")
+num_transits = int(num_transit_str)
+
+# how many transits we wait before calculating the variation
+plot_interval_str = input("comparison interval (default 1): ")
+if plot_interval_str.isnumeric() and int(plot_interval_str) > 0:
+    plot_interval = int(plot_interval_str)
+else:
+    plot_interval = 1
+
+# decide whether to show variation from jupiter only, or from entire solar system
+jupiter_str = input("Jupiter only? (y/n, default n): ")
+jupiter_only = (jupiter_str == "y")
+
+show_flux_str = input("Plot flux? (y/n, default n): ")
+show_flux = (show_flux_str == "y")
+
+if jupiter_only:
+    planet_list = [earth, jup]
+else:
+    planet_list = [earth, mercury, venus, mars, jup, saturn, neptune]
+
+t = run_simulation(sun, planet_list, num_transits, show_plot=show_flux)
+all_periods = [t[i+1]-t[i] for i in range(len(t)-1)]
+periods = all_periods[0::plot_interval]
+diffs = [periods[i + 1] - periods[i] for i in range(len(periods) - 1)]
+plot_transit_variations(diffs, plot_interval)
