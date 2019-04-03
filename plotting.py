@@ -29,9 +29,9 @@ def plot_flux(flux, transits, step_size):
     plt.figure()
     plt.title("flux")
     plt.ylabel("relative flux (shifted for ease of viewing)")
-    plt.xticks()
+    plt.xticks([])
     for transit_data in near_transit_data:
-        plt.plot(transit_data[:,0], transit_data[:,1],"b-")
+        plt.plot(transit_data[:,0], transit_data[:,1],"b-", linewidth=1)
     plt.show(block=False)
 
 
@@ -39,7 +39,7 @@ def plot_transit_variations(variations, interval):
     plt.figure()
     plt.title("transit period changes")
     plt.plot(variations, "b.-")
-    plt.xlabel("Transit")
+    plt.xlabel("Transit Number")
     plt.xticks(range(0, len(variations)), range(0, interval*len(variations), interval))
     plt.ylabel("change from previous (seconds)")
     plt.show(block=False)
